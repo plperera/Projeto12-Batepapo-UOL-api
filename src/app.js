@@ -118,7 +118,7 @@ server.get('/messages', async function (req, res){
             if(user === arrayMessage[i].to || user === arrayMessage[i].from) arr.push(arrayMessage[i])
             else (limit++)
             
-        } else arr.push(arrayMessage[i])
+        } else arr.push({...arrayMessage[i], _id: undefined})
     }
     
     res.send(arr.reverse())
