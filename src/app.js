@@ -14,14 +14,14 @@ mongoClient.connect(() => {
     db = mongoClient.db('api-uol')
 })
 
-/*
+
 let participantes = [
     {
-    name: "Pedro", 
+    name: "a", 
     lastStatus: 12313123
     }
 ]
-*/
+
 
 let historico = [
     /*
@@ -39,31 +39,47 @@ server.get('/teste', function (req, res){
     res.send("ok")
 })
 
-server.post('/participants', function (req, res){   
+server.post('/participants', async function (req, res){   
     if (req.body.name === "") return res.status(422).send({erro: "nome invalido"})
 
     if (!(participantes.find(nomes => nomes.name === req.body.name))){
 
         //participantes.push(req.body)
+        
+        const response = await db.collection('participantes').insertOne({
+            name: req.body.name
+        })
+        res.status(201).send({message: "participante inserido com sucesso", id: response.insertedId})
 
+        /*
         db.collection('participantes').insertOne({
             name: req.body.name
         }).then(r => {
             res.status(201).send({message: "participante inserido com sucesso", id: r.insertedId})
         })
-
+        */
         
         
     } else return res.status(409).send({erro: "nome ja cadastrado"})
        
 })
 
-server.get('/participants', function (req, res){
+server.get('/participants', async function (req, res){
 
+    const response = await db.collection('participantes').find().toArray()
+    res.send(response.map(value => ({
+        ...value,
+        _id: undefined
+    })))
+
+    /*
     db.collection('participantes').find().toArray().then(data => {
-        res.send(data)
+        res.send(data.map(value => ({
+            ...value,
+            _id: undefined
+        })))
     })
-    
+    */
 })
 
 server.post('/messages', function (req, res){
