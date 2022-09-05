@@ -24,7 +24,7 @@ const participantesSchema = joi.object({
 const messagesSchema = joi.object({
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().required()  
+    type: joi.string().valid('message','private_message').required()  
 })
 
 server.get('/teste', async function (req, res) {
@@ -36,6 +36,7 @@ server.get('/teste', async function (req, res) {
         res.send("deu nao")
     }
 })
+
 server.post('/participants', async function (req, res){   
 
     const validation = participantesSchema.validate(req.body)
@@ -59,7 +60,7 @@ server.post('/participants', async function (req, res){
         time: dayjs().locale('pt-br').format('HH:mm:ss'),
     })
 
-    res.status(201).send({message: "participante inserido com sucesso", id: response.insertedId})
+    res.sendStatus(201)//.send({message: "participante inserido com sucesso", id: response.insertedId})
   
 })
 
@@ -75,38 +76,36 @@ server.get('/participants', async function (req, res){
     }
 })
 
-server.post('/messages', function (req, res){
-
-    const validation = messagesSchema.validate(req.body, {abortEarly: false})
-    if(validation.error){
-        const erros = validation.error.details.map(e => e.message)
-        res.status(422).send(erros)
-        return
-    }
-   
+server.post('/messages', async function (req, res){
 
     const {to, text, type} = req.body
     const {user} = req.headers
 
-    //if (to === "" || text === "") return res.status(422).send({erro: "destinatario ou mensagem invalida"})
-    //if (!(participantes.find(nomes => nomes.name === user))) return res.status(422).send({erro: "usuario invalido"})
+    const validation = messagesSchema.validate(req.body, {abortEarly: false})
+    if(validation.error){
+        const erros = validation.error.details.map(e => e.message)
+        return res.status(422).send(erros)
+    }
+   
+    const arrayParticipantes = await db.collection('participantes').find().toArray()
+    if(!(arrayParticipantes.find(e => e.name === user))) return res.sendStatus(422)
 
-    //if (type === "message" || type === "private_message"){
-
-        historico.push({
-            from: user,
-            to: to,
-            text: text,
-            type: type,
-            time: "XX:XX:XX"
-        })
-
-        return res.sendStatus(201)
-    //} else return res.status(422).send({erro: "tipo de mensagem invalida"})
+    await db.collection('message').insertOne({
+        from: user,
+        to: to,
+        text: text,
+        type: type,
+        time: dayjs().locale('pt-br').format('HH:mm:ss')
+    })
+    
+    return res.sendStatus(201)  
 })
 
-server.get('/messages', function (req, res){
-    let size = (historico.length - 1)
+server.get('/messages', async function (req, res){
+
+    const arrayMessage = await db.collection('message').find().toArray()
+    /*
+    let size = (arrayMessage.length - 1)
     let arr = []
     let {limit} = req.query
     let {user} = req.headers
@@ -114,18 +113,69 @@ server.get('/messages', function (req, res){
     if (!limit) limit = 100
 
     for (let i = size; (i > size - limit) && (i >= 0); i--){
-        arr.push(historico[i])
-    }
+        if (arrayMessage[i].type === "private_message"){
 
-    res.send(arr)
+            if(user === arrayMessage[i].to || user === arrayMessage[i].from) arr.push(arrayMessage[i])
+            else (limit++)
+            
+        } else arr.push(arrayMessage[i])
+    }
+    */
+    res.send(arrayMessage)
 })
 
-server.post('/status', function (req, res){
+server.post('/status', async function (req, res){
+
     const {user} = req.headers
-    if (!(participantes.find(nomes => nomes.name === user))) return res.status(404).send({erro: "usuario invalido"})
+
+    const arrayParticipantes = await db.collection('participantes').find().toArray()
+    if(!(arrayParticipantes.find(e => e.name === user))) return res.sendStatus(404)
+
     //atualizar status
+    const response = await db.collection('participantes').insertOne({
+        name: user,
+        lastStatus: Date.now()
+    })
     res.sendStatus(200)
 })
+
+setInterval(async function () {
+    const arrayParticipantes = await db.collection('participantes').find().toArray()
+    const time = Date.now() - (10*1000)
+    console.log("executei")
+    console.log(time)
+
+    
+    arrayParticipantes.map((e) => {
+        console.log(e)
+        if (e.lastStatus <= time){
+            console.log("nome: " + e.from)
+            db.collection('message').insertOne({
+                from: "teste",
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: dayjs().locale('pt-br').format('HH:mm:ss')
+            })
+            db.collection('participantes').deleteOne({ _id: e._id })
+        }
+    })
+}, 15000);
+
+// setInterval(async function () {
+//     const arrayMessage = await db.collection('message').find().toArray()
+
+//     console.log("executei 2")
+    
+//     arrayMessage.map((e) => {
+//         console.log(e)
+//         if (true){
+
+            
+//             db.collection('message').deleteOne({ _id: e._id })
+//         }
+//     })
+// }, 1500);
 
 server.listen(5000, function () {
     console.log("oi console")
