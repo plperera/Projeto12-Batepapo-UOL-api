@@ -44,42 +44,25 @@ server.post('/participants', async function (req, res){
 
     if (!(participantes.find(nomes => nomes.name === req.body.name))){
 
-        //participantes.push(req.body)
-        
         const response = await db.collection('participantes').insertOne({
             name: req.body.name
         })
-        res.status(201).send({message: "participante inserido com sucesso", id: response.insertedId})
-
-        /*
-        db.collection('participantes').insertOne({
-            name: req.body.name
-        }).then(r => {
-            res.status(201).send({message: "participante inserido com sucesso", id: r.insertedId})
-        })
-        */
-        
+        res.status(201).send({message: "participante inserido com sucesso", id: response.insertedId})       
         
     } else return res.status(409).send({erro: "nome ja cadastrado"})
        
 })
 
 server.get('/participants', async function (req, res){
-
-    const response = await db.collection('participantes').find().toArray()
-    res.send(response.map(value => ({
+    try {
+        const response = await db.collection('participantes').find().toArray()
+        res.send(response.map(value => ({
         ...value,
         _id: undefined
-    })))
-
-    /*
-    db.collection('participantes').find().toArray().then(data => {
-        res.send(data.map(value => ({
-            ...value,
-            _id: undefined
         })))
-    })
-    */
+    } catch (error) {
+        res.sendStatus(500)
+    }
 })
 
 server.post('/messages', function (req, res){
