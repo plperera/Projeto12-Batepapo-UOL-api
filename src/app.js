@@ -1,18 +1,27 @@
 import express from 'express';
 import cors from "cors";
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv'
+dotenv.config()
 
 const server = express();
-
 server.use(express.json())
 server.use(cors());
 
-//colocar do MongoDB 
+const mongoClient = new MongoClient(process.env.MONGO_URI)
+let db
+mongoClient.connect(() => {
+    db = mongoClient.db('api-uol')
+})
+
+/*
 let participantes = [
     {
     name: "Pedro", 
     lastStatus: 12313123
     }
 ]
+*/
 
 let historico = [
     /*
@@ -25,22 +34,36 @@ let historico = [
     } */
     1,2,3,4,5,6,7,8
 ]
-
+server.get('/teste', function (req, res){
+    console.log(db)
+    res.send("ok")
+})
 
 server.post('/participants', function (req, res){   
     if (req.body.name === "") return res.status(422).send({erro: "nome invalido"})
 
     if (!(participantes.find(nomes => nomes.name === req.body.name))){
 
-        participantes.push(req.body)
-        res.sendStatus(201)
+        //participantes.push(req.body)
+
+        db.collection('participantes').insertOne({
+            name: req.body.name
+        }).then(r => {
+            res.status(201).send({message: "participante inserido com sucesso", id: r.insertedId})
+        })
+
+        
         
     } else return res.status(409).send({erro: "nome ja cadastrado"})
        
 })
 
 server.get('/participants', function (req, res){
-    res.send(participantes)
+
+    db.collection('participantes').find().toArray().then(data => {
+        res.send(data)
+    })
+    
 })
 
 server.post('/messages', function (req, res){
