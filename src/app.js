@@ -31,7 +31,7 @@ server.get('/teste', async function (req, res) {
     
     try {
         const data = dayjs().locale('pt-br').format('HH:mm:ss')
-        res.send(await db.collection('messages').find().toArray())
+        res.send(await db.collection('message').find().toArray())
     } catch (error) {
         res.send("deu nao")
     }
@@ -47,12 +47,12 @@ server.post('/participants', async function (req, res){
     const arrayParticipantes = await db.collection('participantes').find().toArray()
     if(arrayParticipantes.find(e => e.name === req.body.name)) return res.sendStatus(409)
 
-    const response = await db.collection('participantes').insertOne({
+    await db.collection('participantes').insertOne({
         name: req.body.name,
         lastStatus: Date.now()
     })
 
-    await db.collection('messages').insertOne({
+    await db.collection('message').insertOne({
         from: req.body.name,
         to: 'Todos',
         text: 'entra na sala...',
@@ -104,7 +104,7 @@ server.post('/messages', async function (req, res){
 server.get('/messages', async function (req, res){
 
     const arrayMessage = await db.collection('message').find().toArray()
-    /*
+    
     let size = (arrayMessage.length - 1)
     let arr = []
     let {limit} = req.query
@@ -120,8 +120,8 @@ server.get('/messages', async function (req, res){
             
         } else arr.push(arrayMessage[i])
     }
-    */
-    res.send(arrayMessage)
+    
+    res.send(arr.reverse())
 })
 
 server.post('/status', async function (req, res){
@@ -131,6 +131,7 @@ server.post('/status', async function (req, res){
     const arrayParticipantes = await db.collection('participantes').find().toArray()
     if(!(arrayParticipantes.find(e => e.name === user))) return res.sendStatus(404)
 
+    db.collection('participantes').deleteOne({ name: user})
     //atualizar status
     const response = await db.collection('participantes').insertOne({
         name: user,
@@ -147,35 +148,22 @@ setInterval(async function () {
 
     
     arrayParticipantes.map((e) => {
-        console.log(e)
-        if (e.lastStatus <= time){
-            console.log("nome: " + e.from)
+        if (e.lastStatus <= time){ 
+            
             db.collection('message').insertOne({
-                from: "teste",
+                from: e.name,
                 to: 'Todos',
                 text: 'sai da sala...',
                 type: 'status',
                 time: dayjs().locale('pt-br').format('HH:mm:ss')
             })
+            
             db.collection('participantes').deleteOne({ _id: e._id })
         }
     })
 }, 15000);
 
-// setInterval(async function () {
-//     const arrayMessage = await db.collection('message').find().toArray()
 
-//     console.log("executei 2")
-    
-//     arrayMessage.map((e) => {
-//         console.log(e)
-//         if (true){
-
-            
-//             db.collection('message').deleteOne({ _id: e._id })
-//         }
-//     })
-// }, 1500);
 
 server.listen(5000, function () {
     console.log("oi console")
