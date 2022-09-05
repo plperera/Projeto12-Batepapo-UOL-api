@@ -14,17 +14,20 @@ let participantes = [
     }
 ]
 
-let historico = [{
+let historico = [
+    /*
+    {
     from: 'João',
     to: 'Todos',
     text: 'oi galera',
     type: 'message',
     time: '20:04:37'
-}]
+    } */
+    1,2,3,4,5,6,7,8
+]
 
 
-server.post('/participants', function (req, res){
-    
+server.post('/participants', function (req, res){   
     if (req.body.name === "") return res.status(422).send({erro: "nome invalido"})
 
     if (!(participantes.find(nomes => nomes.name === req.body.name))){
@@ -62,7 +65,25 @@ server.post('/messages', function (req, res){
 })
 
 server.get('/messages', function (req, res){
-    res.send(historico)
+    let size = (historico.length - 1)
+    let arr = []
+    let {limit} = req.query
+    let {user} = req.headers
+
+    if (!limit) limit = 100
+
+    for (let i = size; (i > size - limit) && (i >= 0); i--){
+        arr.push(historico[i])
+    }
+
+    res.send(arr)
+})
+
+server.post('/status', function (req, res){
+    const {user} = req.headers
+    if (!(participantes.find(nomes => nomes.name === user))) return res.status(404).send({erro: "usuario invalido"})
+    //atualizar status
+    res.sendStatus(200)
 })
 
 server.listen(5000, function () {
